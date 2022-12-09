@@ -1,0 +1,130 @@
+class Monte_Carlo:
+    def __init__(self, dataset,model):
+        self.model=model
+        self.dataset=dataset
+        O1 =self.dataset[:,0,1:4]
+        O2 =self.dataset[:,1,1:4]
+        H  =self.dataset[:,2,1:4]
+        H11=self.dataset[:,5,1:4]
+        H12=self.dataset[:,6,1:4]
+        H21=self.dataset[:,3,1:4]
+        H22=self.dataset[:,4,1:4]
+        H_O1       = O1-H
+        H_O2       = O2-H
+        O1_H11     = H11-O1
+        O1_H12     = H12-O1
+        O2_H21     = H21-O2
+        O2_H22     = H22-O2
+        self.H_O1_mean       = H_O1.mean()
+        self.H_O2_mean       = H_O2.mean()
+        self.O1_H11_mean     = O1_H11.mean()
+        self.O1_H12_mean     = O1_H12.mean()
+        self.O2_H21_mean     = O2_H21.mean()
+        self.O2_H22_mean     = O2_H22.mean()
+        self.O1_H_O2_mean    = (vg.angle(H_O1,H_O2)).mean()
+        self.H22_O2_H21_mean = (vg.angle(O2_H21,O2_H22)).mean()
+        self.H12_O1_H11_mean = (vg.angle(O1_H11,O1_H12)).mean()
+        
+        self.H_O1_std       = 0.3*(O1-H).std()
+        self.H_O2_std       = 0.3*(O2-H).std()
+        self.O1_H11_std     = 0.3*(H11-O1).std()
+        self.O1_H12_std     = 0.3*(H12-O1).std()
+        self.O2_H21_std     = 0.3*(H21-O2).std()
+        self.O2_H22_std     = 0.3*(H22-O2).std()
+        self.O1_H_O2_std    = 0.3*(vg.angle(H_O1,H_O2)).std()
+        self.H22_O2_H21_std = 0.3*(vg.angle(O2_H21,O2_H22)).std()
+        self.H12_O1_H11_std = 0.3*(vg.angle(O1_H11,O1_H12)).std()
+        
+
+    def create_config(self,config):
+        O1 =config[0,1:4]
+        O2 =config[1,1:4]
+        H  =config[2,1:4]
+        H21=config[3,1:4]
+        H22=config[4,1:4]
+        H11=config[5,1:4]
+        H12=config[6,1:4]
+        
+        H_O1       = O1-H
+        H_O2       = O2-H
+        O1_H11     = H11-O1
+        O1_H12     = H12-O1
+        O2_H21     = H21-O2
+        O2_H22     = H22-O2
+        O1_H_O2    = vg.angle(H_O1,H_O2)
+        H22_O2_H21 = vg.angle(O2_H21,O2_H22)
+        H12_O1_H11 = vg.angle(O1_H11,O1_H12)
+        
+        d_H_O1       = np.random.normal(loc=0, scale=self.H_O1_std      )
+        d_H_O2       = np.random.normal(loc=0, scale=self.H_O2_std      )
+        d_O1_H11     = np.random.normal(loc=0, scale=self.O1_H11_std    )
+        d_O1_H12     = np.random.normal(loc=0, scale=self.O1_H12_std    )
+        d_O2_H21     = np.random.normal(loc=0, scale=self.O2_H21_std    )
+        d_O2_H22     = np.random.normal(loc=0, scale=self.O2_H22_std    )
+        d_O1_H_O2    = np.random.normal(loc=0, scale=self.O1_H_O2_std   )
+        d_H22_O2_H21 = np.random.normal(loc=0, scale=self.H22_O2_H21_std)
+        d_H12_O1_H11 = np.random.normal(loc=0, scale=self.H12_O1_H11_std)
+        new_H  = H
+        r,t,p  = cartesian_to_polar_3d(H_O1)
+        new_O1 = new_H + polar_to_cartesian_3d(r+d_H_O1,t+d_O1_H_O2/4,p+d_O1_H_O2/4)
+        r,t,p  = cartesian_to_polar_3d(H_O2)
+        new_O2 = new_H + polar_to_cartesian_3d(r+d_H_O2,t+d_O1_H_O2/4,p+d_O1_H_O2/4)
+        r,t,p  = cartesian_to_polar_3d(O1_H11)
+        new_H11= new_O1 + polar_to_cartesian_3d(r+d_O1_H11,t+d_H12_O1_H11/4,p+d_H12_O1_H11/4)
+        r,t,p  = cartesian_to_polar_3d(O1_H12)
+        new_H12= new_O1 + polar_to_cartesian_3d(r+d_O1_H12,t+d_H12_O1_H11/4,p+d_H12_O1_H11/4)
+        r,t,p  = cartesian_to_polar_3d(O2_H21)
+        new_H21= new_O2 + polar_to_cartesian_3d(r+d_O2_H21,t+d_H22_O2_H21/4,p+d_H22_O2_H21/4)
+        r,t,p  = cartesian_to_polar_3d(O2_H22)
+        new_H22= new_O2 + polar_to_cartesian_3d(r+d_O2_H22,t+d_H22_O2_H21/4,p+d_H22_O2_H21/4)
+        new_config=np.copy(config)
+        new_config[0,1:4]=new_O1 
+        new_config[1,1:4]=new_O2 
+        new_config[2,1:4]=new_H  
+        new_config[3,1:4]=new_H21
+        new_config[4,1:4]=new_H22
+        new_config[5,1:4]=new_H11
+        new_config[6,1:4]=new_H12
+        return new_config
+    
+    def run_mcmc(self,config_init,N_config)
+        dataset_gen=[]
+        for i in range(100):
+            dataset_gen.append(new_config)
+            new_config=self.create_config(new_config)
+        return(np.array(dataset_gen))
+
+
+def cartesian_to_polar_3d(vector):
+  # Convert the input vector to a NumPy array
+  v = np.array(vector)
+  
+  # Calculate the polar coordinates
+  r = np.linalg.norm(v)
+  theta = np.arccos(v[2] / r)
+  phi = np.arctan2(v[1], v[0])
+  
+  # Return the polar coordinates
+  return (r, theta, phi)
+
+def polar_to_cartesian_3d(r, theta, phi):
+
+  
+  # Calculate the Cartesian coordinates
+  x = r * np.sin(theta) * np.cos(phi)
+  y = r * np.sin(theta) * np.sin(phi)
+  z = r * np.cos(theta)
+  
+  # Return the Cartesian coordinates
+  return (x, y, z)
+
+
+
+#         new_H=np.array([0,0,0])
+#         new_O1=d_H_O1
+#         new_O2=d_H_O2
+#         new_H11=
+#         new_H12=
+#         new_H21=
+#         new_H22=
+MC=Monte_Carlo(dataset)
